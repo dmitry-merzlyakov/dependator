@@ -13,6 +13,8 @@ namespace Dependator.Core
         MethodGenericTypeArgument,
         MethodParameter,
         MethodResult,
-        MethodBody
+        MethodBody,
+        PropertyType,
+        FieldType,
     }
 }

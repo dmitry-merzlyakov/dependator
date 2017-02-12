@@ -105,8 +105,11 @@
     <Compile Include="ReferenceBuilder.cs" />
     <Compile Include="ReferenceDefinition.cs" />
     <Compile Include="ReferenceDefinitions\BaseTypeReference.cs" />
+    <Compile Include="ReferenceDefinitions\EventReference.cs" />
+    <Compile Include="ReferenceDefinitions\FieldReference.cs" />
     <Compile Include="ReferenceDefinitions\InterfaceReference.cs" />
     <Compile Include="ReferenceDefinitions\MethodReference.cs" />
+    <Compile Include="ReferenceDefinitions\PropertyReference.cs" />
     <Compile Include="ReferenceEndpoint.cs" />
     <Compile Include="ReferenceKind.cs" />
     <Compile Include="ReferenceModel.cs" />

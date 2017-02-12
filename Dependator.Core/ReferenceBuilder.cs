@@ -22,8 +22,9 @@ namespace Dependator.Core
                 CheckBaseTypeReference(model, typeSymbol);
                 CheckInterfaces(model, typeSymbol);
                 CheckMethods(model, typeSymbol);
-
-
+                CheckProperties(model, typeSymbol);
+                CheckFields(model, typeSymbol);
+                CheckEvents(model, typeSymbol);
             });
 
             // Stucts
@@ -32,8 +33,9 @@ namespace Dependator.Core
                 CheckBaseTypeReference(model, structSymbol);
                 CheckInterfaces(model, structSymbol);
                 CheckMethods(model, structSymbol);
-
-
+                CheckProperties(model, structSymbol);
+                CheckFields(model, structSymbol);
+                CheckEvents(model, structSymbol);
             });
 
             // Interfaces
@@ -42,12 +44,16 @@ namespace Dependator.Core
                 CheckBaseTypeReference(model, interfaceSymbol);
                 CheckInterfaces(model, interfaceSymbol);
                 CheckMethods(model, interfaceSymbol);
-
-
+                CheckProperties(model, interfaceSymbol);
+                CheckEvents(model, interfaceSymbol);
             });
 
-            // fields, properties!!!
-
+            // Delegates
+            Parallel.ForEach(model.SolutionSymbols.Where(s => s.TypeKind == TypeKind.Delegate), delegateSymbol =>
+            {
+                if (delegateSymbol.DelegateInvokeMethod != null)
+                    CheckMethod(model, delegateSymbol, delegateSymbol.DelegateInvokeMethod);
+            });
         }
 
         private void CheckBaseTypeReference(DependencyModel model, INamedTypeSymbol symbol)
@@ -70,41 +76,56 @@ namespace Dependator.Core
 
         private void CheckMethods(DependencyModel model, INamedTypeSymbol symbol)
         {
-            Parallel.ForEach(symbol.GetMembers().OfType<IMethodSymbol>(), methodSymbol =>
-            {
-                // Generalization
-                if (methodSymbol.IsGenericMethod)
-                {
-                    Parallel.ForEach(methodSymbol.TypeArguments.OfType<INamedTypeSymbol>().ResolveGeneralizedTypes(),
-                        type => AddReference(model, symbol, type, (f, t) => new MethodGenericReference(f, t, methodSymbol)));
-                }
-
-                // Parameters
-                if (methodSymbol.Parameters.Any())
-                {
-                    Parallel.ForEach(methodSymbol.Parameters.Select(p => p.Type).OfType<INamedTypeSymbol>().ResolveGeneralizedTypes(),
-                        type => AddReference(model, symbol, type, (f, t) => new MethodParameterReference(f, t, methodSymbol)));
-                }
-
-                // Return Type
-                if (!methodSymbol.ReturnsVoid)
-                {
-                    var namedType = methodSymbol.ReturnType as INamedTypeSymbol;
-                    if (namedType != null)
-                    {
-                        Parallel.ForEach(namedType.ResolveGeneralizedType(),
-                            type => AddReference(model, symbol, type, (f, t) => new MethodResultReference(f, t, methodSymbol)));
-                    }
-
-                }
-
-                var compilation = model.GetCompilation(methodSymbol.ContainingType);
-                Parallel.ForEach(ReferenceBuilderExtensions.GetMethodBodySymbols(methodSymbol, compilation).OfType<INamedTypeSymbol>(),
-                    type => AddReference(model, symbol, type, (f, t) => new MethodBodyReference(f, t, methodSymbol)));
-
-            });
+            Parallel.ForEach(symbol.GetMembers().OfType<IMethodSymbol>(), methodSymbol => CheckMethod(model, symbol, methodSymbol));
         }
 
+        private void CheckMethod(DependencyModel model, INamedTypeSymbol symbol, IMethodSymbol methodSymbol)
+        {
+            // Generalization
+            if (methodSymbol.IsGenericMethod)
+            {
+                Parallel.ForEach(methodSymbol.TypeArguments.OfType<INamedTypeSymbol>().ResolveGeneralizedTypes(),
+                    type => AddReference(model, symbol, type, (f, t) => new MethodGenericReference(f, t, methodSymbol)));
+            }
+
+            // Parameters
+            if (methodSymbol.Parameters.Any())
+            {
+                Parallel.ForEach(methodSymbol.Parameters.Select(p => p.Type).OfType<INamedTypeSymbol>().ResolveGeneralizedTypes(),
+                    type => AddReference(model, symbol, type, (f, t) => new MethodParameterReference(f, t, methodSymbol)));
+            }
+
+            // Return Type
+            if (!methodSymbol.ReturnsVoid)
+            {
+                var namedType = methodSymbol.ReturnType as INamedTypeSymbol;
+                if (namedType != null)
+                {
+                    Parallel.ForEach(namedType.ResolveGeneralizedType(),
+                        type => AddReference(model, symbol, type, (f, t) => new MethodResultReference(f, t, methodSymbol)));
+                }
+
+            }
+
+            var compilation = model.GetCompilation(methodSymbol.ContainingType);
+            Parallel.ForEach(ReferenceBuilderExtensions.GetMethodBodySymbols(methodSymbol, compilation).OfType<INamedTypeSymbol>(),
+                type => AddReference(model, symbol, type, (f, t) => new MethodBodyReference(f, t, methodSymbol)));
+        }
+
+        private void CheckProperties(DependencyModel model, INamedTypeSymbol symbol)
+        {
+            ProcessMemberSymbols<IPropertySymbol>(model, symbol, s => s.Type, (f, t) => new PropertyReference(f, t));
+        }
+
+        private void CheckFields(DependencyModel model, INamedTypeSymbol symbol)
+        {
+            ProcessMemberSymbols<IFieldSymbol>(model, symbol, s => s.Type, (f, t) => new FieldReference(f, t));
+        }
+
+        private void CheckEvents(DependencyModel model, INamedTypeSymbol symbol)
+        {
+            ProcessMemberSymbols<IEventSymbol>(model, symbol, s => s.Type, (f, t) => new EventReference(f, t));
+        }
 
         private static void AddReference(DependencyModel model, INamedTypeSymbol symbolFrom, INamedTypeSymbol symbolTo, Func<ReferenceEndpoint,ReferenceEndpoint,ReferenceDefinition> factory)
         {
@@ -113,6 +134,21 @@ namespace Dependator.Core
                 var referenceFrom = model.GetOrAddReferenceFrom(symbolFrom);
                 var referenceTo = model.GetOrAddReferenceTo(symbolTo);
                 model.AddReferenceDefinition(factory(referenceFrom,referenceTo));
+            }
+        }
+
+        private static void ProcessMemberSymbols<T>(DependencyModel model, INamedTypeSymbol symbol, Func<T,ITypeSymbol> getType, Func<ReferenceEndpoint, ReferenceEndpoint, ReferenceDefinition> factory) where T : ISymbol
+        {
+            var symbols = symbol.GetMembers().OfType<T>();
+            if (symbols.Any())
+            {
+                Parallel.ForEach(symbols, memberSymbol =>
+                {
+                    var memberType = getType(memberSymbol) as INamedTypeSymbol; // Only named types are considered
+                    if (memberType != null)
+                        foreach (var type in memberType.ResolveGeneralizedType())
+                            AddReference(model, symbol, type, factory);
+                });
             }
         }
     }
@@ -175,6 +211,10 @@ namespace Dependator.Core
 
                 case MethodKind.Conversion:
                     body = ((ConversionOperatorDeclarationSyntax)syntaxNode).Body;
+                    break;
+
+                case MethodKind.DelegateInvoke:  // syntaxNode is DelegateDeclarationSyntax
+                    body = null;
                     break;
 
                 default:

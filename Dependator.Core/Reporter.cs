@@ -37,7 +37,7 @@ namespace Dependator.Core
 
             foreach(var endPoint in endPoints)
             {
-                sb.AppendFormat("[{0}] {1} reference(s)", endPoint.Symbol, endPoint.References.Count());
+                sb.AppendFormat("[{0} {1}] {2} reference(s)", endPoint.Symbol.TypeKind, endPoint.Symbol, endPoint.References.Count());
                 sb.AppendLine();
 
                 foreach(var grp in endPoint.References.GroupBy(r => new Tuple<string,string>(r.Inverse(endPoint).Symbol.ToString(), r.ReferenceType.ToString())).OrderByDescending(g => g.Count()))
