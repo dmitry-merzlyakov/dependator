@@ -193,6 +193,7 @@ namespace Dependator.Core
             switch (methodSymbol.MethodKind)
             {
                 case MethodKind.Constructor:
+                case MethodKind.SharedConstructor:
                     body = ((ConstructorDeclarationSyntax)syntaxNode).Body;
                     break;
 
@@ -202,6 +203,7 @@ namespace Dependator.Core
                     break;
 
                 case MethodKind.Ordinary:
+                case MethodKind.ExplicitInterfaceImplementation:
                     body = ((MethodDeclarationSyntax)syntaxNode).Body;
                     break;
 

@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -38,6 +39,6 @@ namespace Dependator.Core
             return String.Format("{0} [{1}] {2} references", ReferenceKind, Symbol, References.Count());
         }
 
-        private readonly IList<ReferenceDefinition> ReferenceList = new List<ReferenceDefinition>();
+        private readonly BlockingCollection<ReferenceDefinition> ReferenceList = new BlockingCollection<ReferenceDefinition>();
     }
 }
