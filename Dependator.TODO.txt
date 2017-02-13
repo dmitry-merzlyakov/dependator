@@ -2,8 +2,8 @@ TODO list
 
 Pending:
 
-1) Complete supporrt of class fields and properties
-2) Complete support for enums and delegates
+(+)1) Complete supporrt of class fields and properties
+(+)2) Complete support for enums and delegates
 3) Complete unit tests for Core
 4) Complete integration tests for Core
 5) Add supporrt of attributes
@@ -16,9 +16,11 @@ Future Enhancements
 
 Bugs to fix:
 
-1) Cannot load more than one project (Key is already added exception)
+(+)1) Cannot load more than one project (Key is already added exception)
    Steps: remove project filter (-f) for NLedger
 
-2) Cannot handle ArrowExpressionClauseSyntax; error message is:
+(+)2) Cannot handle ArrowExpressionClauseSyntax; error message is:
    Unable to cast object of type 'Microsoft.CodeAnalysis.CSharp.Syntax.ArrowExpressionClauseSyntax' to type 'Microsoft.CodeAnalysis.CSharp.Syntax.AccessorDeclarationSyntax'.
    Steps: try to open Syntex project
+
+3) "A Task was canceled" exception message by attempt to open a huge solution

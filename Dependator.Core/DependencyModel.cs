@@ -19,9 +19,7 @@ namespace Dependator.Core
             SolutionNamespaces = symbols.Select(s => s.Item1.Name).ToList();
 
             LazySolutionSymbols = new Lazy<IEnumerable<INamedTypeSymbol>>(() => Symbols.Where(s => SolutionNamespaces.Contains(s.ContainingAssembly.Name)).ToList(), true);
-            LazyCompilations = new Lazy<IDictionary<INamedTypeSymbol, Compilation>>(() => symbols.
-                SelectMany(s => s.Item3.Select(m => new Tuple<INamedTypeSymbol, Compilation>(m, s.Item2))).
-                ToDictionary(t => t.Item1, t => t.Item2));
+            LazyCompilations = new Lazy<IDictionary<string, Compilation>>(() => GetCompilations(symbols));
         }
 
         public IEnumerable<INamedTypeSymbol> Symbols { get; private set; }
@@ -35,10 +33,27 @@ namespace Dependator.Core
 
         public Compilation GetCompilation(INamedTypeSymbol symbol)
         {
-            return LazyCompilations.Value[symbol];
+            return LazyCompilations.Value[symbol.ToString()];
+        }
+
+        private static IDictionary<string, Compilation> GetCompilations(IEnumerable<Tuple<Project, Compilation, IEnumerable<INamedTypeSymbol>>> symbols)
+        {
+            var compilations = new Dictionary<string, Compilation>();
+
+            // The order to add projects is essential
+            foreach (var project in symbols)
+            {
+                foreach (var symbol in project.Item3)
+                {
+                    if (!compilations.ContainsKey(symbol.ToString()))
+                        compilations.Add(symbol.ToString(), project.Item2);
+                }
+            }
+
+            return compilations;
         }
 
         private readonly Lazy<IEnumerable<INamedTypeSymbol>> LazySolutionSymbols;
-        private readonly Lazy<IDictionary<INamedTypeSymbol,Compilation>> LazyCompilations;
+        private readonly Lazy<IDictionary<string,Compilation>> LazyCompilations;
     }
 }
